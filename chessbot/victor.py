@@ -1,14 +1,14 @@
-import chess
 import random as rnd
 import timeit
 from math import sqrt, log
 
+from chess import PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
 from .bot import ChessBot
 
 class ChessBotVictor(ChessBot):
     def __init__(self, name, opt_dict = None):
         super().__init__(name, opt_dict)
-        self.depth = opt_dict['depth']
+        self.depth = opt_dict['depth']        
         self.start_board = None
         self.is_white = True
 
@@ -104,178 +104,121 @@ class ChessBotVictor(ChessBot):
         self.king_end_game_eval_black = [i for i in reversed(self.king_end_game_eval_white)]
 
     def is_end_game(self, board):
-        n_pawns = len(board.pieces(chess.PAWN, True)) + len(board.pieces(chess.PAWN, False))
-        n_knights = len(board.pieces(chess.KNIGHT, True)) + len(board.pieces(chess.KNIGHT, False))
-        n_bishops = len(board.pieces(chess.BISHOP, True)) + len(board.pieces(chess.BISHOP, False))
-        n_rooks = len(board.pieces(chess.ROOK, True)) + len(board.pieces(chess.ROOK, False))
-        n_queens = len(board.pieces(chess.QUEEN, True)) + len(board.pieces(chess.QUEEN, False))
-        n_kings = len(board.pieces(chess.KING, True)) + len(board.pieces(chess.KING, False))
+        n_pawns = len(board.pieces(PAWN, True)) + len(board.pieces(PAWN, False))
+        n_knights = len(board.pieces(KNIGHT, True)) + len(board.pieces(KNIGHT, False))
+        n_bishops = len(board.pieces(BISHOP, True)) + len(board.pieces(BISHOP, False))
+        n_rooks = len(board.pieces(ROOK, True)) + len(board.pieces(ROOK, False))
+        n_queens = len(board.pieces(QUEEN, True)) + len(board.pieces(QUEEN, False))
+        n_kings = len(board.pieces(KING, True)) + len(board.pieces(KING, False))
 
         if n_pawns + n_knights + n_bishops + n_rooks + n_queens + n_kings <= 22:
             return True
         else:
             return False
 
-    def calc_heuristic_score(self, board, depth):
-        score = 0
-
-        for i in range(8*8):
-            piece = board.piece_at(i)
-            if not piece:
-                continue
-
-            if piece.color == self.is_white:
-                if piece.piece_type == chess.PAWN:
-                    if self.is_white:
-                        score += self.pawns_eval_white[i]
-                    else:
-                        score += self.pawns_eval_black[i]                    
-
-                elif piece.piece_type == chess.KNIGHT:
-                    if self.is_white:
-                        score += self.knights_eval_white[i]
-                    else:
-                        score += self.knights_eval_black[i]                    
-
-                elif piece.piece_type == chess.BISHOP:
-                    if self.is_white:
-                        score += self.bishops_eval_white[i]
-                    else:
-                        score += self.bishops_eval_black[i]                    
-
-                elif piece.piece_type == chess.ROOK:
-                    if self.is_white:
-                        score += self.rooks_eval_white[i]
-                    else:
-                        score += self.rooks_eval_black[i]                    
-
-                elif piece.piece_type == chess.QUEEN:
-                    if self.is_white:
-                        score += self.queen_eval_white[i]
-                    else:
-                        score += self.queen_eval_black[i]                    
-
-                elif piece.piece_type == chess.KING and self.is_end_game(board):
-                    if self.is_white:
-                        score += self.king_end_game_eval_white[i]
-                    else:
-                        score += self.king_end_game_eval_black[i]                    
-
-                elif piece.piece_type == chess.KING:
-                    if self.is_white:
-                        score += self.king_eval_white[i]
-                    else:
-                        score += self.king_eval_black[i]
-
-                else:
-                    pass
-
+    def calc_heuristic_score(self, board):
+        if board.is_game_over():
+            result = board.result()
+            if (self.is_white and result == '1-0') or ((not self.is_white) and result == '0-1'):
+                return 10**5
+            elif (self.is_white and result == '0-1') or ((not self.is_white) and result == '1-0'):
+                return -10**5
             else:
-                if piece.piece_type == chess.PAWN:
-                    if not self.is_white:
-                        score -= self.pawns_eval_white[i]
+                return 0
+
+        res = 0
+        scores = {PAWN:100, KNIGHT:300, BISHOP:300, ROOK:500, QUEEN: 900, KING:9000}
+        color_factors = {self.is_white: 1, (not self.is_white): -1}
+
+        for square in range(64):
+            piece = board.piece_at(square)
+            if piece:
+                res += scores[piece.piece_type] * color_factors[piece.color]
+
+                if piece.color == self.is_white:
+                    if piece.piece_type == PAWN:
+                        if self.is_white:
+                            res += self.pawns_eval_white[square]
+                        else:
+                            res += self.pawns_eval_black[square]
+
+                    elif piece.piece_type == KNIGHT:
+                        if self.is_white:
+                            res += self.knights_eval_white[square]
+                        else:
+                            res += self.knights_eval_black[square]
+
+                    elif piece.piece_type == BISHOP:
+                        if self.is_white:
+                            res += self.bishops_eval_white[square]
+                        else:
+                            res += self.bishops_eval_black[square]
+
+                    elif piece.piece_type == ROOK:
+                        if self.is_white:
+                            res += self.rooks_eval_white[square]
+                        else:
+                            res += self.rooks_eval_black[square]
+
+                    elif piece.piece_type == QUEEN:
+                        if self.is_white:
+                            res += self.queen_eval_white[square]
+                        else:
+                            res += self.queen_eval_black[square]
+
+                    elif piece.piece_type == KING and self.is_end_game(board):
+                        if self.is_white:
+                            res += self.king_end_game_eval_white[square]
+                        else:
+                            res += self.king_end_game_eval_black[square]
+
                     else:
-                        score -= self.pawns_eval_black[i]                    
+                        if self.is_white:
+                            res += self.king_eval_white[square]
+                        else:
+                            res += self.king_eval_black[square]
 
-                elif piece.piece_type == chess.KNIGHT:
-                    if not self.is_white:
-                        score -= self.knights_eval_white[i]
-                    else:
-                        score -= self.knights_eval_black[i]                    
+        return res
 
-                elif piece.piece_type == chess.BISHOP:
-                    if not self.is_white:
-                        score -= self.bishops_eval_white[i]
-                    else:
-                        score -= self.bishops_eval_black[i]                    
+    def get_moves_to_explore(self, board):
+        moves_to_explore = []
+        moves = self.possible_moves(board)
 
-                elif piece.piece_type == chess.ROOK:
-                    if not self.is_white:
-                        score -= self.rooks_eval_white[i]
-                    else:
-                        score -= self.rooks_eval_black[i]                    
+        if len(moves) > 10:  
+            scores = []
+            for move in moves:
+                board_copy = board.copy()
+                board_copy.push(move)
 
-                elif piece.piece_type == chess.QUEEN:
-                    if not self.is_white:
-                        score -= self.queen_eval_white[i]
-                    else:
-                        score -= self.queen_eval_black[i]                    
+                scores.append(self.calc_heuristic_score(board_copy))
 
-                elif piece.piece_type == chess.KING and self.is_end_game(board):
-                    if not self.is_white:
-                        score -= self.king_end_game_eval_white[i]
-                    else:
-                        score -= self.king_end_game_eval_black[i]                    
+            moves_dict = dict(list(zip(scores, moves)))
+            scores.sort(reverse=True)
 
-                elif piece.piece_type == chess.KING:
-                    if not self.is_white:
-                        score -= self.king_eval_white[i]
-                    else:
-                        score -= self.king_eval_black[i]
+            for i in range(4):
+                key = scores[i]
+                moves_to_explore.append(moves_dict[key])
 
-                else:
-                    pass
+            for i in range(2):
+                moves_to_explore.append(rnd.choice(moves))
 
-        # Opponent looses King
-        if board.is_checkmate() and (not self.is_white == board.turn):
-            score += 9000
+            for i in range(4):
+                key = scores[len(scores)-1-i]
+                moves_to_explore.append(moves_dict[key])
 
-        # Bot looses King
-        if board.is_checkmate() and (self.is_white == board.turn):
-            score += -9000
+            return moves_to_explore
 
-        # Opponent looses Queen
-        if len(self.start_board.pieces(chess.QUEEN, (not self.is_white))) > len(board.pieces(chess.QUEEN, (not self.is_white))):
-            score += 900
-        
-        # Bot looses Queen        
-        if len(self.start_board.pieces(chess.QUEEN, self.is_white)) > len(board.pieces(chess.QUEEN, self.is_white)):
-            score += -900
-
-        # Opponent looses Rook
-        if len(self.start_board.pieces(chess.ROOK, (not self.is_white))) > len(board.pieces(chess.ROOK, (not self.is_white))):
-            score += 500
-        
-        # Bot looses Rook        
-        if len(self.start_board.pieces(chess.ROOK, self.is_white)) > len(board.pieces(chess.ROOK, self.is_white)):
-            score += -500
-
-        # Opponent looses Bishop      
-        if len(self.start_board.pieces(chess.BISHOP, (not self.is_white))) > len(board.pieces(chess.BISHOP, (not self.is_white))):
-            score += 300
-        
-        # Bot looses Bishop        
-        if len(self.start_board.pieces(chess.BISHOP, self.is_white)) > len(board.pieces(chess.BISHOP, self.is_white)):
-            score += -300
-        
-        # Opponent looses Knight        
-        if len(self.start_board.pieces(chess.KNIGHT, (not self.is_white))) > len(board.pieces(chess.KNIGHT, (not self.is_white))):
-            score += 300
-        
-        # Bot looses Knight        
-        if len(self.start_board.pieces(chess.KNIGHT, self.is_white)) > len(board.pieces(chess.KNIGHT, self.is_white)):
-            score += -300
-
-        # Opponent looses Pawn    
-        if len(self.start_board.pieces(chess.PAWN, (not self.is_white))) > len(board.pieces(chess.PAWN, (not self.is_white))):
-            score += 100
-        
-        # Bot looses Pawn        
-        if len(self.start_board.pieces(chess.PAWN, self.is_white)) > len(board.pieces(chess.PAWN, self.is_white)):
-            score += -100
-
-        # Makes AI smarter with weighting depth (number of moves)
-        score += (depth-1) * 100
-        return score
+        else:
+            return moves
 
     def minimax(self, board, depth, alpha, beta):
         if depth == 1 or board.is_game_over():
-            return self.calc_heuristic_score(board, depth)
+            return self.calc_heuristic_score(board)
 
         elif board.turn == self.is_white:
             v = -10**6
 
-            for a in self.possible_moves(board):
+            for a in self.get_moves_to_explore(board):
                 board_copy = board.copy()
                 board_copy.push(a)
 
@@ -283,7 +226,6 @@ class ChessBotVictor(ChessBot):
                 alpha = max(alpha, v)
 
                 if alpha >= beta:
-                    # print("prune")
                     break
 
             return v
@@ -291,15 +233,14 @@ class ChessBotVictor(ChessBot):
         else:
             v = 10**6
 
-            for a in self.possible_moves(board):
+            for a in self.get_moves_to_explore(board):
                 board_copy = board.copy()
                 board_copy.push(a)
-
+         
                 v = min(v, self.minimax(board_copy, depth-1, alpha, beta))
                 beta = min(beta, v)
 
-                if alpha >= beta:
-                    # print("prune")                    
+                if alpha >= beta:                  
                     break
 
             return v
@@ -311,7 +252,7 @@ class ChessBotVictor(ChessBot):
         current_score = 0
         best_move = None
 
-        for move in self.possible_moves(board):
+        for move in self.get_moves_to_explore(board):
             board_copy = board.copy()
             board_copy.push(move)
             current_score = self.minimax(board_copy, self.depth, -10**6, 10**6)
@@ -330,8 +271,8 @@ class ChessBotVictor(ChessBot):
 class ChessBotMonteCarlo(ChessBot):
     def __init__(self, name, opt_dict = None):
         super().__init__(name, opt_dict)
-        self.n_simulations = opt_dict["n_simulations"]
-        self.n_interations = opt_dict["n_iterations"]
+        self.n_simulations = opt_dict['n_simulations']
+        self.n_interations = opt_dict['n_iterations']
         self.is_white = True
 
     class Node:
@@ -368,13 +309,13 @@ class ChessBotMonteCarlo(ChessBot):
         for _ in range(self.n_simulations):
             board_copy = node.board.copy()
 
-            # print("Random Playout start...")
+            # print('Random Playout start...')
             while board_copy.result() == '*':
                 moves = self.possible_moves(board_copy)
                 board_copy.push(moves[rnd.randint(0, len(moves)-1)])
-            # print("Random Playout ended.")            
+            # print('Random Playout ended.')            
 
-            if (board_copy.result() == "1-0" and self.is_white) or (board_copy.result() == "0-1" and not self.is_white):
+            if (board_copy.result() == '1-0' and self.is_white) or (board_copy.result() == '0-1' and not self.is_white):
                 n_wins += 1
             else:
                 pass
@@ -396,8 +337,8 @@ class ChessBotMonteCarlo(ChessBot):
 
     def monte_carlo_tree_search(self, root):
         for _ in range(self.n_interations):
-            # print("Wins: " + str(root.n_wins))
-            # print("Simulations: " + str(root.n_simulations))            
+            # print('Wins: ' + str(root.n_wins))
+            # print('Simulations: ' + str(root.n_simulations))            
 
             # Selection
             node = root
