@@ -9,8 +9,10 @@ class ChessBotVictor(ChessBot):
     def __init__(self, name, opt_dict = None):
         super().__init__(name, opt_dict)
         self.depth = opt_dict['depth']        
-        self.start_board = None
         self.is_white = True
+
+        self.random_table = [[rnd.randint(0, 2**64) for _ in range(12)] for _ in range(64)]
+        self.transposition = dict()
 
         self.pawns_eval_white = [
             0,  0,  0,  0,  0,  0,  0,  0,
@@ -178,13 +180,14 @@ class ChessBotVictor(ChessBot):
                         else:
                             res += self.king_eval_black[square]
 
+        self.transposition[self.zobrist_hash(board)] = res
         return res
 
     def get_moves_to_explore(self, board):
         moves_to_explore = []
         moves = self.possible_moves(board)
 
-        if len(moves) > 10:  
+        if False:
             scores = []
             for move in moves:
                 board_copy = board.copy()
@@ -211,7 +214,22 @@ class ChessBotVictor(ChessBot):
         else:
             return moves
 
+    def zobrist_hash(self, board):
+        _hash = 0
+        for i in range(64):
+            piece = board.piece_at(i)
+            if piece:
+                j = piece.piece_type
+                if not piece.color:
+                    j += 6
+                _hash ^= self.random_table[i][j-1]
+
+        return _hash
+
     def minimax(self, board, depth, alpha, beta):
+        if self.zobrist_hash(board) in self.transposition.keys():
+            return self.transposition[self.zobrist_hash(board)]
+
         if depth == 1 or board.is_game_over():
             return self.calc_heuristic_score(board)
 
@@ -247,7 +265,6 @@ class ChessBotVictor(ChessBot):
 
     def move(self, board):
         self.is_white = board.turn
-        self.start_board = board.copy()
         best_score = -10**6
         current_score = 0
         best_move = None
